@@ -90,11 +90,15 @@ def add_emails_to_archive(p):
 
 
 if __name__ == '__main__':
+	INTRO = """
+	+------------------------------------------------+
+	| GmailBot v0.1.0 alpha                          |
+	| Powered by: Mohammed ER-Ramouchy.              |
+	+------------------------------------------------+
 	"""
-	get all profiles
-	loop through them and fire "add_emails_to_archive" function
-	
-	"""
+	click.secho(INTRO, fg='white')
+	click.secho('[INFO] GmailBot init...', fg='yellow')
+
 	with open('profiles.csv') as f:
 		profiles = csv.DictReader(f)
 		# remove the default profile.
@@ -120,7 +124,7 @@ if __name__ == '__main__':
 			else:
 				click.secho('\r[Done] {email}'.format(**profile)+' '*50, fg='bright_green')
 
-		click.secho('Finished.', fg='bright_magenta')
+		click.secho('[INFO] GmailBot Finished.', fg='yellow')
 
 
 
