@@ -11,8 +11,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoAlertPresentException, NoSuchElementException
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import (NoAlertPresentException, NoSuchElementException, 
+	TimeoutException)
 from selenium.webdriver.support.events import EventFiringWebDriver, AbstractEventListener
 
 
@@ -20,6 +20,9 @@ executable_path  	= './bin/geckodriver.exe'
 log_path 			= './logs/geckodriver.log' 
 profiles_path		= r'C:\Users\%s\AppData\Roaming\Mozilla\Firefox\Profiles' % os.getlogin()
 
+
+class EmptyInbox(Exception):
+	pass
 
 
 def add_emails_to_archive(p):
@@ -52,14 +55,21 @@ def add_emails_to_archive(p):
 	driver.get('https://mail.google.com/mail/u/0/#inbox')
 	# print(driver.title)
 
-	driver.implicitly_wait(10)
+	driver.implicitly_wait(5)
+	# all_messages = driver.find_element_by_css_selector('tr.zA')
 
 	if not driver.current_url.startswith('https://mail.google.com'):
 		click.secho('\r[warning] {email} (May need a manual login).'.format(**p)+' '*50, fg='yellow')
+
+	try:
+		WebDriverWait(driver, 2).until(
+			EC.presence_of_element_located((By.CSS_SELECTOR, 'tr.zA')))
+	except Exception as e:
+		driver.quit()
+		raise EmptyInbox()
 	else:
 		check_all = driver.find_element_by_css_selector('span.T-Jo')
-		
-		driver.implicitly_wait(5)
+		# driver.implicitly_wait(5)
 		# check_all_emails.send_keys(Keys.RETURN)
 		# ActionChains(driver).send_keys(Keys.ENTER)
 		ActionChains(driver).click(check_all).perform()
@@ -104,6 +114,11 @@ if __name__ == '__main__':
 		# remove the default profile.
 		all_profiles = [os.path.join(profiles_path, d) for d in os.listdir(profiles_path) if os.path.isdir(os.path.join(profiles_path, d)) and 'default' not in d]
 
+		# check for the the neccessary fields in profile.csv.
+		if 'email' not in profiles.fieldnames:
+			click.secho('[Error] the "profile.csv" should contain an "email" field in it.', fg='red')
+			exit(1)
+
 		# get the profiles paths depends on profiles.csv
 		valid_profiles = []
 		for profile in profiles:
@@ -112,6 +127,9 @@ if __name__ == '__main__':
 				if p.endswith(username):
 					profile['path'] = p
 					valid_profiles.append(profile)
+					break
+			else:
+				click.secho('[Worning] This account [{email}] doesn\'t have a Firefox profile on your PC (Make sure to make one).'.format(**profile), fg='bright_yellow')
 
 		
 		# the the task with whese profiles.
@@ -119,6 +137,8 @@ if __name__ == '__main__':
 			try:
 				click.secho('[Processing] {email}...'.format(**profile), fg='bright_cyan', nl=False)
 				add_emails_to_archive(profile)
+			except EmptyInbox:
+				click.secho('\r[Done] {email} (Inbox is empty)'.format(**profile)+' '*50, fg='bright_green')
 			except Exception as e:
 				print(e)
 			else:
